@@ -3,16 +3,12 @@ import os
 from os.path import join
 from optparse import OptionParser
 import numpy as np
-import math
+from torchvision import transforms
+import matplotlib.pyplot as plt
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 from torch import optim
-
-from torchvision import transforms
-
-import matplotlib.pyplot as plt
-
 from model import UNet
 import torch.nn.functional as F
 from dataloader import DataLoader
@@ -21,7 +17,7 @@ def train_net(net,
               epochs=1,
               data_dir='data/cells/',
               n_classes=2,
-              lr=0.1,
+              lr=0.00006,
               val_percent=0.1,
               save_cp=True,
               gpu=False):
@@ -33,7 +29,9 @@ def train_net(net,
                             lr=lr,
                             momentum=0.99,
                             weight_decay=0.0005)
-
+    start = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+    start.record()
     for epoch in range(epochs):
         print('Epoch %d/%d' % (epoch + 1, epochs))
         print('Training...')
@@ -45,13 +43,14 @@ def train_net(net,
 
         for i, (img, label) in enumerate(loader):
             shape = img.shape
+            
             # todo: create image tensor: (N,C,H,W) - (batch size=1,channels=1,height,width)
             img_torch = torch.from_numpy(img.reshape(1,1,shape[0],shape[1])).float()
 
             # todo: load image tensor to gpu
             if gpu:
                 img_torch = img_torch.cuda()
-                #print("lolololololl")
+                
             optimizer.zero_grad()
             # todo: get prediction and getLoss()
             pred_label = net(img_torch)
@@ -72,7 +71,9 @@ def train_net(net,
         torch.save(net.state_dict(), join(data_dir, 'checkpoints') + '/CP%d.pth' % (epoch + 1))
         print('Checkpoint %d saved !' % (epoch + 1))
         print('Epoch %d finished! - Loss: %.6f' % (epoch+1, epoch_loss / i))
-      
+    end.record()
+    torch.cuda.synchronize()
+    print('time taken:',start.elapsed_time(end)/1000)
 
     # displays test images with original and predicted masks after training
     loader.setMode('test')
@@ -102,22 +103,12 @@ def getLoss(pred_label, target_label):
 def softmax(input):
     # todo: implement softmax function
     p = torch.exp(input) / torch.sum(torch.exp(input), 1)
-    #p = F.softmax(input, 1)
     return p
 
 def cross_entropy(input, targets):
     # todo: implement cross entropy
     # Hint: use the choose function
-    # using pad to crop targets
-#    Ypad = input.shape[2] - targets.shape[0] 
-#    Xpad = input.shape[3] - targets.shape[1]
-#    pad_left = math.floor(Xpad / 2)
-#    pad_right = Xpad-math.floor(Xpad / 2)
-#    pad_top = math.floor(Ypad / 2)
-#    pad_bot = Ypad-math.floor(Ypad / 2)
-#    targets = F.pad(targets, pad=(pad_left, pad_right, pad_top, pad_bot))
-    pred = choose(input, targets)
-    ce = torch.mean(-torch.log(pred))
+    ce = torch.mean(-torch.log(choose(input, targets)))
     
     return ce
 
@@ -135,7 +126,7 @@ def choose(pred_label, true_labels):
     
 def get_args():
     parser = OptionParser()
-    parser.add_option('-e', '--epochs', dest='epochs', default=3, type='int', help='number of epochs')
+    parser.add_option('-e', '--epochs', dest='epochs', default=4, type='int', help='number of epochs')
     parser.add_option('-c', '--n-classes', dest='n_classes', default=2, type='int', help='number of classes')
     parser.add_option('-d', '--data-dir', dest='data_dir', default='data/cells/', help='data directory')
     parser.add_option('-g', '--gpu', action='store_true', dest='gpu', default=True, help='use cuda')
