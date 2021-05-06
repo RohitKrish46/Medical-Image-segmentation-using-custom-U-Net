@@ -4,10 +4,6 @@ import torchvision.transforms as transforms
 import random
 import numpy as np
 from PIL import Image
-import matplotlib.pyplot as plt
-
-from scipy.ndimage.filters import gaussian_filter
-from scipy.ndimage.interpolation import map_coordinates
 
 class DataLoader():
     def __init__(self, root_dir='data', batch_size=2, test_percent=.1):
@@ -37,87 +33,60 @@ class DataLoader():
             # todo: load images and labels
             # hint: scale images between 0 and 1
             # hint: if training takes too long or memory overflow, reduce image size!
-            resized_size = 572
+            
+            #resize dimension
+            resize_row = 572
+            resize_col = 572
             # load images
             data_image = Image.open(self.data_files[current])
-            data_image = data_image.resize((resized_size, resized_size))
-
+            
             # load labels
             label_image = Image.open(self.label_files[current])
-            label_image = label_image.resize((resized_size, resized_size))
-
-            # apply data augmentation and normalization
-            data_image, label_image = self.__applyDataAugmentation(data_image, label_image)
+            
+            # applying data augmentation
+            data_image, label_image = self.Augmentation(data_image, label_image)
+            
+             # normalization
+            data_image = data_image.resize((resize_row, resize_col))
+            label_image = label_image.resize((resize_row, resize_col))
+            data_image = np.asarray(data_image, dtype=np.float32) / 255.
+            label_image = np.asarray(label_image, dtype=np.float32)
+           
             current += 1
             yield (data_image, label_image)
-
+            
+    def Augmentation(self, data_image, label_image):
+        #flipping
+        flip = random.randint(0,2)
+        if flip == 1:
+            data_image = transforms.functional.hflip(data_image)
+            label_image = transforms.functional.hflip(label_image)
+            
+        elif flip == 2:
+            data_image = transforms.functional.vflip(data_image)
+            label_image = transforms.functional.vflip(label_image)
+        #rotation                
+        rotate = random.randint(0,2)
+        if rotate == 1:
+            data_image = data_image.transpose(Image.ROTATE_90)
+            label_image = label_image.transpose(Image.ROTATE_90)
+        elif rotate == 2:
+            data_image = data_image.transpose(Image.ROTATE_180)
+            label_image = label_image.transpose(Image.ROTATE_180)
+        #gamma correction           
+        gamma_val = random.randint(0,1)
+        gamma = 1
+        if gamma_val == 1:
+            gamma = 0.8
+        data_image = transforms.functional.adjust_gamma(data_image, gamma, gain=1)
+                       
+        return data_image, label_image
+ 
     def setMode(self, mode):
         self.mode = mode
 
     def n_train(self):
         data_length = len(self.data_files)
         return np.int_(data_length - np.floor(data_length * self.test_percent))
-    
-    def __applyDataAugmentation(self, data_image, label_image):
-        
-        flipOption = random.randint(0,2)
-        
-        zoomOption = random.randint(0,2)
-                   
-        rotateOption = random.randint(0,2)
-                   
-        gammaOption = random.randint(0,1)
-         
-        elasticOption = random.randint(0,1)
-
-        data_image = self.__flip(data_image, flipOption)
-        label_image = self.__flip(label_image, flipOption)
-        
-        data_image = self.__zoom(data_image, zoomOption)
-        label_image = self.__zoom(label_image, zoomOption)
-        
-        data_image = self.__rotate(data_image, rotateOption)
-        label_image = self.__rotate(label_image, rotateOption)
-
-        #data_image = self.__gamma(data_image, gammaOption)
-        
-        # normalization
-        data_image = np.asarray(data_image, dtype=np.float32) / 255.
-        label_image = np.asarray(label_image, dtype=np.float32)
-        
-        return data_image, label_image
-    def __flip(self, image, flipOption):
-        if flipOption == 1:
-            image = image.transpose(Image.FLIP_LEFT_RIGHT)
-        elif flipOption == 2:
-            image = image.transpose(Image.FLIP_TOP_BOTTOM)
-        return image
-
-    def __zoom(self, image, zoomOption):
-        resized_size, _ = image.size
-        crop_ratio = 1
-        if zoomOption == 1:
-            crop_ratio = 0.95
-        elif zoomOption == 2:
-            crop_ratio = 0.9
-        crop_start = int(resized_size*(1-crop_ratio)/2)
-        crop_size = int(resized_size*crop_ratio)
-        crop_pos= (crop_start,crop_start,crop_start+crop_size,crop_start+crop_size)
-        image = image.crop(crop_pos).resize((resized_size, resized_size))
-        return image
-
-    def __rotate(self, image, rotateOption):
-        if rotateOption == 1:
-            image = image.transpose(Image.ROTATE_90)
-        elif rotateOption == 2:
-            image = image.transpose(Image.ROTATE_180)
-        return image
-
-    def __gamma(self, image, gammaOption):
-        gamma = 1
-        if gammaOption == 1:
-            gamma = 0.8
-        image = transforms.functional.adjust_gamma(image, gamma, gain=1)
-        return image
 
   
