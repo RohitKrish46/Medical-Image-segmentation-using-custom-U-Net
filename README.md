@@ -1,5 +1,5 @@
 # Medical image segmentation using custom U-Net
-In this Project, We experimented with U-NET - A CNN that was developed for biomedical image segmentation. Generally the main idea behind any CNN is to learn the feature mapping of an image and produce a feature mapping. This works well in classification problems as the images are converted into a vector which used further for classification. But in semantic image segmentation, we not only need to convert feature map into a vector but also reconstruct an image from this vector to obtain results.
+In this project, I conducted experiments with U-Net—a specialized convolutional neural network (CNN) designed for image segmentation. While traditional CNNs aim to learn feature mappings of images for classification tasks, they excel in converting images into vectors for further analysis. However, semantic image segmentation poses a unique challenge: not only must we convert feature maps into vectors, but we must also reconstruct images from these vectors to accurately delineate boundaries and structures within the image.
 
 # Results
 Some of the outputs from the Model:
